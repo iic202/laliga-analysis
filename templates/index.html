@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}La Liga Analysis - Home{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-4 mb-4">La Liga Analysis</h1>
+        <p class="lead mb-4">Explore Spanish football league standings, team performances, and historical data</p>
+    </div>
+</section>
+
+<!-- Search Container -->
+<div class="container">
+    <div class="search-container">
+        <h3 class="text-center mb-4">Search Teams & Seasons</h3>
+        
+        <!-- Search Tabs -->
+        <ul class="nav nav-tabs justify-content-center mb-4" id="searchTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="team-tab" data-bs-toggle="tab" data-bs-target="#team-search" type="button">
+                     Team Search
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="season-tab" data-bs-toggle="tab" data-bs-target="#season-search" type="button">
+                     Season Search
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced-search" type="button">
+                     Advanced Search
+                </button>
+            </li>
+        </ul>
+
+        <!-- Search Tab Content -->
+        <div class="tab-content" id="searchTabContent">
+            <!-- Team Search -->
+            <div class="tab-pane fade show active" id="team-search" role="tabpanel">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control form-control-lg" id="teamInput" 
+                                   placeholder="Enter team name (e.g., Real Madrid, Barcelona)">
+                            <button class="btn btn-custom btn-lg" type="button" onclick="searchTeam()">
+                                Search Team
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-muted">Search for any La Liga team to see their historical performance</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Season Search -->
+            <div class="tab-pane fade" id="season-search" role="tabpanel">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="input-group mb-3">
+                            <input type="number" class="form-control form-control-lg" id="seasonInput" 
+                                   placeholder="Enter season year (e.g., 2023)" min="2000" max="2030">
+                            <button class="btn btn-custom btn-lg" type="button" onclick="searchSeason()">
+                                View Season
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-muted">View complete standings for any season</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Search -->
+            <div class="tab-pane fade" id="advanced-search" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="advTeamInput" class="form-label">Team Name</label>
+                            <input type="text" class="form-control" id="advTeamInput" placeholder="Any team">
+                        </div>
+                        <div class="mb-3">
+                            <label for="minPoints" class="form-label">Minimum Points</label>
+                            <input type="number" class="form-control" id="minPoints" placeholder="e.g., 70">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="maxPosition" class="form-label">Maximum Position</label>
+                            <input type="number" class="form-control" id="maxPosition" placeholder="e.g., 5" min="1" max="20">
+                        </div>
+                        <div class="mb-3">
+                            <label for="advSeasonInput" class="form-label">Season</label>
+                            <input type="number" class="form-control" id="advSeasonInput" placeholder="e.g., 2023">
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-custom btn-lg" onclick="advancedSearch()">
+                        Advanced Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading and Messages -->
+<div class="container">
+    <div class="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Searching...</p>
+    </div>
+    
+    <div class="error-message"></div>
+    <div class="success-message"></div>
+</div>
+
+<!-- Results Container -->
+<div class="container mt-5" id="resultsContainer" style="display: none;">
+    <h3 id="resultsTitle">Search Results</h3>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover" id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Season</th>
+                    <th>Position</th>
+                    <th>Team</th>
+                    <th>Games</th>
+                    <th>Wins</th>
+                    <th>Draws</th>
+                    <th>Losses</th>
+                    <th>Goals For</th>
+                    <th>Goals Against</th>
+                    <th>Goal Diff</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody">
+                <!-- Results will be populated here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Quick Stats Section -->
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <h5 class="card-title"> Champions</h5>
+                    <p class="card-text">Explore championship winners across different seasons</p>
+                    <button class="btn btn-custom" onclick="getChampions()">View Champions</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <h5 class="card-title"> Top Scorers</h5>
+                    <p class="card-text">Teams with the highest goal tallies</p>
+                    <button class="btn btn-custom" onclick="getTopScorers()">View Top Scorers</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <h5 class="card-title"> Best Defense</h5>
+                    <p class="card-text">Teams with the best defensive records</p>
+                    <button class="btn btn-custom" onclick="getBestDefense()">View Defense</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Team search function
+    function searchTeam() {
+        const teamName = document.getElementById('teamInput').value.trim();
+        if (!teamName) {
+            showError('Please enter a team name');
+            return;
+        }
+        
+        showLoading();
+        fetch(`/team?name=${encodeURIComponent(teamName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResults(data, `${teamName} Performance`);
+                }
+            })
+            .catch(error => {
+                showError('Error fetching team data: ' + error.message);
+            });
+    }
+
+    // Season search function
+    function searchSeason() {
+        const season = document.getElementById('seasonInput').value;
+        if (!season) {
+            showError('Please enter a season year');
+            return;
+        }
+        
+        showLoading();
+        fetch(`/standings/${season}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResults(data, `${season} Season Standings`);
+                }
+            })
+            .catch(error => {
+                showError('Error fetching season data: ' + error.message);
+            });
+    }
+
+    // Advanced search function
+    function advancedSearch() {
+        const team = document.getElementById('advTeamInput').value;
+        const minPoints = document.getElementById('minPoints').value;
+        const maxPosition = document.getElementById('maxPosition').value;
+        const season = document.getElementById('advSeasonInput').value;
+        
+        let url = '/standings?';
+        const params = [];
+        
+        if (team) params.push(`team=${encodeURIComponent(team)}`);
+        if (minPoints) params.push(`min_points=${minPoints}`);
+        if (maxPosition) params.push(`max_position=${maxPosition}`);
+        if (season) params.push(`season=${season}`);
+        
+        if (params.length === 0) {
+            showError('Please enter at least one search criteria');
+            return;
+        }
+        
+        url += params.join('&');
+        
+        showLoading();
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResults(data, 'Advanced Search Results');
+                }
+            })
+            .catch(error => {
+                showError('Error fetching data: ' + error.message);
+            });
+    }
+
+    // Display results function
+    function displayResults(data, title) {
+        hideLoading();
+        
+        if (!data || data.length === 0) {
+            showError('No results found');
+            return;
+        }
+        
+        document.getElementById('resultsTitle').textContent = title;
+        const tbody = document.getElementById('resultsBody');
+        tbody.innerHTML = '';
+        
+        data.forEach(standing => {
+            const row = document.createElement('tr');
+            row.className = getPositionClass(standing.position);
+            
+            row.innerHTML = `
+                <td>${standing.season}</td>
+                <td><strong>${standing.position}</strong></td>
+                <td><strong>${standing.team}</strong></td>
+                <td>${standing.games_played}</td>
+                <td>${standing.wins}</td>
+                <td>${standing.draws}</td>
+                <td>${standing.losses}</td>
+                <td>${standing.goals_for}</td>
+                <td>${standing.goals_against}</td>
+                <td>${standing.goal_difference > 0 ? '+' : ''}${standing.goal_difference}</td>
+                <td><strong>${standing.points}</strong></td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        document.getElementById('resultsContainer').style.display = 'block';
+        document.getElementById('resultsContainer').scrollIntoView({ behavior: 'smooth' });
+        showSuccess(`Found ${data.length} results`);
+    }
+
+    // Quick stats functions
+    function getChampions() {
+        showLoading();
+        fetch('/standings?max_position=1')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResults(data, 'Championship Winners');
+                }
+            })
+            .catch(error => showError('Error: ' + error.message));
+    }
+
+    function getTopScorers() {
+        showLoading();
+        fetch('/search?season_start=2020')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    // Sort by goals_for descending
+                    data.sort((a, b) => b.goals_for - a.goals_for);
+                    displayResults(data.slice(0, 20), 'Top Scoring Teams (Since 2020)');
+                }
+            })
+            .catch(error => showError('Error: ' + error.message));
+    }
+
+    function getBestDefense() {
+        showLoading();
+        fetch('/search?season_start=2020')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    // Sort by goals_against ascending
+                    data.sort((a, b) => a.goals_against - b.goals_against);
+                    displayResults(data.slice(0, 20), 'Best Defensive Records (Since 2020)');
+                }
+            })
+            .catch(error => showError('Error: ' + error.message));
+    }
+
+    // Enter key support
+    document.getElementById('teamInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchTeam();
+    });
+    
+    document.getElementById('seasonInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchSeason();
+    });
+</script>
+{% endblock %}
