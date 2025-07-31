@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics - La Liga Analysis{% endblock %}
+
+{% block head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-4 mb-4">📈 La Liga Statistics</h1>
+        <p class="lead mb-4">Visual insights and analytics from La Liga data</p>
+    </div>
+</section>
+
+<!-- Quick Stats Overview -->
+<div class="container">
+    <div class="search-container">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🏆 Total Seasons</h5>
+                        <h2 class="text-primary" id="totalSeasons">-</h2>
+                        <small class="text-muted">Data coverage</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">⚽ Teams</h5>
+                        <h2 class="text-success" id="totalTeams">-</h2>
+                        <small class="text-muted">Unique teams</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🥅 Total Goals</h5>
+                        <h2 class="text-warning" id="totalGoals">-</h2>
+                        <small class="text-muted">All seasons</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 Records</h5>
+                        <h2 class="text-info" id="totalRecords">-</h2>
+                        <small class="text-muted">Database entries</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="container mt-5">
+    <div class="row">
+        <!-- Championships Chart -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">🏆 Championships by Team</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="championshipsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Average Points by Season -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📈 Average Points by Season</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="avgPointsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Goals Distribution -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">⚽ Goals Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="goalsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Position Distribution -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📊 Position Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="positionChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Team Performance Comparison -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🎯 Top Teams Performance Comparison (Recent 5 Seasons)</h5>
+                    <div>
+                        <select class="form-select form-select-sm" id="metricSelect" onchange="updatePerformanceChart()">
+                            <option value="points">Points</option>
+                            <option value="goals_for">Goals For</option>
+                            <option value="goal_difference">Goal Difference</option>
+                            <option value="wins">Wins</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="performanceChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Insights Section -->
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🧠 Data Insights</h5>
+        </div>
+        <div class="card-body">
+            <div class="row" id="insightsContainer">
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analyzing data...</span>
+                    </div>
+                    <p class="mt-2">Analyzing data patterns...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading and Messages -->
+<div class="container">
+    <div class="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading statistics...</span>
+        </div>
+        <p>Loading statistical data...</p>
+    </div>
+    
+    <div class="error-message"></div>
+    <div class="success-message"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allData = [];
+    let charts = {};
+    
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStatistics();
+    });
+    
+    function loadStatistics() {
+        showLoading();
+        
+        fetch('/standings')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    allData = data;
+                    updateQuickStats(data);
+                    createChampionshipsChart(data);
+                    createAvgPointsChart(data);
+                    createGoalsChart(data);
+                    createPositionChart(data);
+                    createPerformanceChart(data);
+                    generateInsights(data);
+                    hideLoading();
+                    showSuccess('Statistics loaded successfully');
+                } else {
+                    showError('Failed to load statistics data');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showError('Error loading statistics: ' + error.message);
+            });
+    }
+    
+    function updateQuickStats(data) {
+        const seasons = [...new Set(data.map(item => item.season))];
+        const teams = [...new Set(data.map(item => item.team))];
+        const totalGoals = data.reduce((sum, item) => sum + item.goals_for, 0);
+        
+        document.getElementById('totalSeasons').textContent = seasons.length;
+        document.getElementById('totalTeams').textContent = teams.length;
+        document.getElementById('totalGoals').textContent = totalGoals.toLocaleString();
+        document.getElementById('totalRecords').textContent = data.length.toLocaleString();
+    }
+    
+    function createChampionshipsChart(data) {
+        const champions = data.filter(item => item.position === 1);
+        const championCounts = {};
+        
+        champions.forEach(champ => {
+            championCounts[champ.team] = (championCounts[champ.team] || 0) + 1;
+        });
+        
+        const sortedChampions = Object.entries(championCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 8);
+        
+        const ctx = document.getElementById('championshipsChart').getContext('2d');
+        charts.championships = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: sortedChampions.map(([team]) => team),
+                datasets: [{
+                    data: sortedChampions.map(([, count]) => count),
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                        '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + ' championships';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function createAvgPointsChart(data) {
+        const seasonStats = {};
+        
+        data.forEach(item => {
+            if (!seasonStats[item.season]) {
+                seasonStats[item.season] = { totalPoints: 0, count: 0 };
+            }
+            seasonStats[item.season].totalPoints += item.points;
+            seasonStats[item.season].count++;
+        });
+        
+        const seasons = Object.keys(seasonStats).sort();
+        const avgPoints = seasons.map(season => 
+            (seasonStats[season].totalPoints / seasonStats[season].count).toFixed(1)
+        );
+        
+        const ctx = document.getElementById('avgPointsChart').getContext('2d');
+        charts.avgPoints = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: seasons,
+                datasets: [{
+                    label: 'Average Points',
+                    data: avgPoints,
+                    borderColor: '#36A2EB',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Points'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Season'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    function createGoalsChart(data) {
+        const goalRanges = {
+            '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0, '100+': 0
+        };
+        
+        data.forEach(item => {
+            const goals = item.goals_for;
+            if (goals <= 20) goalRanges['0-20']++;
+            else if (goals <= 40) goalRanges['21-40']++;
+            else if (goals <= 60) goalRanges['41-60']++;
+            else if (goals <= 80) goalRanges['61-80']++;
+            else if (goals <= 100) goalRanges['81-100']++;
+            else goalRanges['100+']++;
+        });
+        
+        const ctx = document.getElementById('goalsChart').getContext('2d');
+        charts.goals = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(goalRanges),
+                datasets: [{
+                    label: 'Teams',
+                    data: Object.values(goalRanges),
+                    backgroundColor: '#FFCE56',
+                    borderColor: '#FFA000',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Teams'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Goals Scored'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    function createPositionChart(data) {
+        const positionCounts = {};
+        
+        for (let i = 1; i <= 20; i++) {
+            positionCounts[i] = data.filter(item => item.position === i).length;
+        }
+        
+        const ctx = document.getElementById('positionChart').getContext('2d');
+        charts.position = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(positionCounts),
+                datasets: [{
+                    label: 'Frequency',
+                    data: Object.values(positionCounts),
+                    backgroundColor: '#4BC0C0',
+                    borderColor: '#26A69A',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Frequency'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Final Position'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    function createPerformanceChart(data) {
+        // Get recent 5 seasons
+        const seasons = [...new Set(data.map(item => item.season))].sort().slice(-5);
+        
+        // Get top 6 teams by recent performance
+        const recentData = data.filter(item => seasons.includes(item.season));
+        const teamStats = {};
+        
+        recentData.forEach(item => {
+            if (!teamStats[item.team]) {
+                teamStats[item.team] = { totalPoints: 0, appearances: 0 };
+            }
+            teamStats[item.team].totalPoints += item.points;
+            teamStats[item.team].appearances++;
+        });
+        
+        const topTeams = Object.entries(teamStats)
+            .filter(([, stats]) => stats.appearances >= 3) // At least 3 seasons
+            .sort(([, a], [, b]) => b.totalPoints - a.totalPoints)
+            .slice(0, 6)
+            .map(([team]) => team);
+        
+        updatePerformanceChart();
+    }
+    
+    function updatePerformanceChart() {
+        const metric = document.getElementById('metricSelect').value;
+        const seasons = [...new Set(allData.map(item => item.season))].sort().slice(-5);
+        const recentData = allData.filter(item => seasons.includes(item.season));
+        
+        // Get top teams
+        const teamStats = {};
+        recentData.forEach(item => {
+            if (!teamStats[item.team]) teamStats[item.team] = { totalPoints: 0, appearances: 0 };
+            teamStats[item.team].totalPoints += item.points;
+            teamStats[item.team].appearances++;
+        });
+        
+        const topTeams = Object.entries(teamStats)
+            .filter(([, stats]) => stats.appearances >= 3)
+            .sort(([, a], [, b]) => b.totalPoints - a.totalPoints)
+            .slice(0, 6)
+            .map(([team]) => team);
+        
+        const datasets = topTeams.map((team, index) => {
+            const teamData = seasons.map(season => {
+                const record = recentData.find(item => item.team === team && item.season === season);
+                return record ? record[metric] : null;
+            });
+            
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+            
+            return {
+                label: team,
+                data: teamData,
+                borderColor: colors[index],
+                backgroundColor: colors[index] + '20',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.4
+            };
+        });
+        
+        if (charts.performance) {
+            charts.performance.destroy();
+        }
+        
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        charts.performance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: seasons,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: metric.charAt(0).toUpperCase() + metric.slice(1).replace('_', ' ')
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Season'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    function generateInsights(data) {
+        const seasons = [...new Set(data.map(item => item.season))];
+        const minSeason = Math.min(...seasons);
+        const maxSeason = Math.max(...seasons);
+        
+        // Calculate insights
+        const champions = data.filter(item => item.position === 1);
+        const championCounts = {};
+        champions.forEach(champ => {
+            championCounts[champ.team] = (championCounts[champ.team] || 0) + 1;
+        });
+        
+        const mostSuccessful = Object.entries(championCounts)
+            .sort(([,a], [,b]) => b - a)[0];
+        
+        const avgGoalsPerSeason = (data.reduce((sum, item) => sum + item.goals_for, 0) / data.length).toFixed(1);
+        const maxPoints = Math.max(...data.map(item => item.points));
+        const maxPointsRecord = data.find(item => item.points === maxPoints);
+        
+        const highestGoals = Math.max(...data.map(item => item.goals_for));
+        const highestGoalsRecord = data.find(item => item.goals_for === highestGoals);
+        
+        const insightsHTML = `
+            <div class="col-md-4">
+                <div class="card bg-light h-100">
+                    <div class="card-body text-center">
+                        <h6>👑 Most Successful Team</h6>
+                        <p class="mb-1"><strong>${mostSuccessful[0]}</strong></p>
+                        <p class="mb-0"><small>${mostSuccessful[1]} championships</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-light h-100">
+                    <div class="card-body text-center">
+                        <h6>🏆 Highest Points</h6>
+                        <p class="mb-1"><strong>${maxPoints} points</strong></p>
+                        <p class="mb-0"><small>${maxPointsRecord.team} (${maxPointsRecord.season})</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-light h-100">
+                    <div class="card-body text-center">
+                        <h6>⚽ Most Goals</h6>
+                        <p class="mb-1"><strong>${highestGoals} goals</strong></p>
+                        <p class="mb-0"><small>${highestGoalsRecord.team} (${highestGoalsRecord.season})</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 mt-3">
+                <div class="alert alert-info">
+                    <strong>📊 Summary:</strong> 
+                    The database covers ${seasons.length} seasons (${minSeason}-${maxSeason}) with an average of 
+                    ${avgGoalsPerSeason} goals per team per season. ${mostSuccessful[0]} leads with ${mostSuccessful[1]} championships.
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('insightsContainer').innerHTML = insightsHTML;
+    }
+</script>
+{% endblock %}

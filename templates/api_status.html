@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}API Status - La Liga Analysis{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-4 mb-4">🔧 API Status</h1>
+        <p class="lead mb-4">Monitor API health and performance</p>
+    </div>
+</section>
+
+<!-- Status Overview -->
+<div class="container">
+    <div class="search-container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🌐 Database Connection</h5>
+                        <div id="dbStatus" class="mb-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Checking...</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-custom" onclick="checkDatabase()">Test Connection</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 API Endpoints</h5>
+                        <div id="endpointsStatus" class="mb-3">
+                            <span class="badge bg-secondary">Not tested</span>
+                        </div>
+                        <button class="btn btn-custom" onclick="testAllEndpoints()">Test All Endpoints</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Endpoints List -->
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">🛠️ Available Endpoints</h5>
+        </div>
+        <div class="card-body">
+            <div id="endpointsList">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Results -->
+<div class="container mt-5" id="testResultsContainer" style="display: none;">
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">🧪 Test Results</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped" id="testResultsTable">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Status</th>
+                            <th>Response Time</th>
+                            <th>Records</th>
+                            <th>Last Tested</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testResultsBody">
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Metrics -->
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">📈 System Metrics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h6>Total API Calls</h6>
+                        <span class="badge bg-primary fs-6" id="totalCalls">0</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h6>Success Rate</h6>
+                        <span class="badge bg-success fs-6" id="successRate">0%</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <h6>Avg Response Time</h6>
+                        <span class="badge bg-info fs-6" id="avgResponseTime">0ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading and Messages -->
+<div class="container">
+    <div class="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Testing...</span>
+        </div>
+        <p>Running API tests...</p>
+    </div>
+    
+    <div class="error-message"></div>
+    <div class="success-message"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let testResults = [];
+    let totalCalls = 0;
+    let successfulCalls = 0;
+    let totalResponseTime = 0;
+
+    // Load status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        checkDatabase();
+        loadEndpointsList();
+    });
+
+    const endpoints = [
+        { name: 'Home Page', method: 'GET', url: '/', expectsJSON: false },
+        { name: 'All Standings', method: 'GET', url: '/standings', expectsJSON: true },
+        { name: 'Season 2023', method: 'GET', url: '/standings/2023', expectsJSON: true },
+        { name: 'Team Search', method: 'GET', url: '/team?name=Barcelona', expectsJSON: true },
+        { name: 'Advanced Search', method: 'GET', url: '/search?season_start=2020', expectsJSON: true },
+        { name: 'Database Test', method: 'GET', url: '/test-db', expectsJSON: true },
+        { name: 'Tables List', method: 'GET', url: '/tables', expectsJSON: true }
+    ];
+
+    function checkDatabase() {
+        const startTime = Date.now();
+        
+        fetch('/test-db')
+            .then(response => response.json())
+            .then(data => {
+                const responseTime = Date.now() - startTime;
+                updateCallStats(true, responseTime);
+                
+                if (data.message && data.message.includes('successful')) {
+                    document.getElementById('dbStatus').innerHTML = `
+                        <span class="badge bg-success fs-6">✅ Connected</span>
+                        <small class="d-block text-muted">${responseTime}ms</small>
+                    `;
+                } else {
+                    document.getElementById('dbStatus').innerHTML = `
+                        <span class="badge bg-warning fs-6">⚠️ Warning</span>
+                        <small class="d-block text-muted">${data.error || 'Unknown issue'}</small>
+                    `;
+                }
+            })
+            .catch(error => {
+                const responseTime = Date.now() - startTime;
+                updateCallStats(false, responseTime);
+                
+                document.getElementById('dbStatus').innerHTML = `
+                    <span class="badge bg-danger fs-6">❌ Failed</span>
+                    <small class="d-block text-muted">${error.message}</small>
+                `;
+            });
+    }
+
+    function loadEndpointsList() {
+        const endpointsHTML = endpoints.map(endpoint => `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                <div>
+                    <strong>${endpoint.name}</strong>
+                    <br>
+                    <small class="text-muted">${endpoint.method} ${endpoint.url}</small>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="testSingleEndpoint('${endpoint.url}', '${endpoint.name}', ${endpoint.expectsJSON})">
+                    Test
+                </button>
+            </div>
+        `).join('');
+        
+        document.getElementById('endpointsList').innerHTML = endpointsHTML;
+    }
+
+    function testAllEndpoints() {
+        showLoading();
+        testResults = [];
+        
+        const promises = endpoints.map(endpoint => testSingleEndpoint(endpoint.url, endpoint.name, endpoint.expectsJSON, false));
+        
+        Promise.all(promises)
+            .then(() => {
+                hideLoading();
+                displayTestResults();
+                updateEndpointsStatus();
+                showSuccess(`Tested ${endpoints.length} endpoints`);
+            })
+            .catch(error => {
+                hideLoading();
+                showError('Error testing endpoints: ' + error.message);
+            });
+    }
+
+    function testSingleEndpoint(url, name, expectsJSON = true, showResult = true) {
+        const startTime = Date.now();
+        
+        return fetch(url)
+            .then(response => {
+                const responseTime = Date.now() - startTime;
+                updateCallStats(response.ok, responseTime);
+                
+                if (expectsJSON) {
+                    return response.json().then(data => {
+                        const recordCount = Array.isArray(data) ? data.length : (data.tables ? data.tables.length : 1);
+                        
+                        const result = {
+                            endpoint: name,
+                            method: 'GET',
+                            status: response.ok ? 'Success' : 'Failed',
+                            responseTime: responseTime,
+                            records: recordCount,
+                            timestamp: new Date().toLocaleTimeString(),
+                            statusCode: response.status
+                        };
+                        
+                        testResults.push(result);
+                        
+                        if (showResult) {
+                            displayTestResults();
+                            showSuccess(`${name} tested successfully`);
+                        }
+                        
+                        return result;
+                    });
+                } else {
+                    const result = {
+                        endpoint: name,
+                        method: 'GET',
+                        status: response.ok ? 'Success' : 'Failed',
+                        responseTime: responseTime,
+                        records: 'N/A (HTML)',
+                        timestamp: new Date().toLocaleTimeString(),
+                        statusCode: response.status
+                    };
+                    
+                    testResults.push(result);
+                    
+                    if (showResult) {
+                        displayTestResults();
+                        showSuccess(`${name} tested successfully`);
+                    }
+                    
+                    return result;
+                }
+            })
+            .catch(error => {
+                const responseTime = Date.now() - startTime;
+                updateCallStats(false, responseTime);
+                
+                const result = {
+                    endpoint: name,
+                    method: 'GET',
+                    status: 'Error',
+                    responseTime: responseTime,
+                    records: 0,
+                    timestamp: new Date().toLocaleTimeString(),
+                    error: error.message
+                };
+                
+                testResults.push(result);
+                
+                if (showResult) {
+                    displayTestResults();
+                    showError(`${name} test failed: ${error.message}`);
+                }
+                
+                return result;
+            });
+    }
+
+    function displayTestResults() {
+        if (testResults.length === 0) return;
+        
+        const tbody = document.getElementById('testResultsBody');
+        tbody.innerHTML = '';
+        
+        testResults.forEach(result => {
+            const row = document.createElement('tr');
+            const statusClass = result.status === 'Success' ? 'success' : (result.status === 'Failed' ? 'warning' : 'danger');
+            
+            row.innerHTML = `
+                <td><strong>${result.endpoint}</strong></td>
+                <td><span class="badge bg-secondary">${result.method}</span></td>
+                <td><span class="badge bg-${statusClass}">${result.status}</span></td>
+                <td>${result.responseTime}ms</td>
+                <td>${result.records}</td>
+                <td>${result.timestamp}</td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        document.getElementById('testResultsContainer').style.display = 'block';
+    }
+
+    function updateEndpointsStatus() {
+        const successCount = testResults.filter(r => r.status === 'Success').length;
+        const totalCount = testResults.length;
+        
+        const statusHTML = `
+            <span class="badge bg-${successCount === totalCount ? 'success' : 'warning'} fs-6">
+                ${successCount}/${totalCount} Working
+            </span>
+        `;
+        
+        document.getElementById('endpointsStatus').innerHTML = statusHTML;
+    }
+
+    function updateCallStats(success, responseTime) {
+        totalCalls++;
+        totalResponseTime += responseTime;
+        
+        if (success) {
+            successfulCalls++;
+        }
+        
+        const successRate = ((successfulCalls / totalCalls) * 100).toFixed(1);
+        const avgTime = (totalResponseTime / totalCalls).toFixed(0);
+        
+        document.getElementById('totalCalls').textContent = totalCalls;
+        document.getElementById('successRate').textContent = successRate + '%';
+        document.getElementById('avgResponseTime').textContent = avgTime + 'ms';
+        
+        // Update success rate badge color
+        const successRateElement = document.getElementById('successRate');
+        successRateElement.className = `badge fs-6 ${parseFloat(successRate) >= 90 ? 'bg-success' : parseFloat(successRate) >= 70 ? 'bg-warning' : 'bg-danger'}`;
+    }
+</script>
+{% endblock %}

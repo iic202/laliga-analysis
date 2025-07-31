@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}All Standings - La Liga Analysis{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-4 mb-4"> All Standings</h1>
+        <p class="lead mb-4">Browse complete La Liga standings across all seasons</p>
+    </div>
+</section>
+
+<!-- Stats Summary -->
+<div class="container mt-4" id="statsContainer" style="display: none;">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Records</h5>
+                    <h3 class="text-primary" id="totalRecords">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Seasons</h5>
+                    <h3 class="text-success" id="totalSeasons">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Teams</h5>
+                    <h3 class="text-warning" id="totalTeams">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Avg Points</h5>
+                    <h3 class="text-info" id="avgPoints">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading and Messages -->
+<div class="container">
+    <div class="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading standings data...</p>
+    </div>
+    
+    <div class="error-message"></div>
+    <div class="success-message"></div>
+</div>
+
+<!-- Results Container -->
+<div class="container mt-5" id="standingsContainer" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 id="standingsTitle">Standings Results</h3>
+        <div>
+            <button class="btn btn-sm btn-outline-primary me-2" onclick="exportToCSV()">
+                Export CSV
+            </button>
+            <select class="form-select form-select-sm d-inline-block w-auto" id="sortBy" onchange="sortResults()">
+                <option value="season_position">Season & Position</option>
+                <option value="points_desc">Points (High to Low)</option>
+                <option value="points_asc">Points (Low to High)</option>
+                <option value="goals_for_desc">Goals For (High to Low)</option>
+                <option value="goal_diff_desc">Goal Difference (High to Low)</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-striped table-hover" id="standingsTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable('season')" style="cursor: pointer;">Season</th>
+                    <th onclick="sortTable('position')" style="cursor: pointer;">Pos</th>
+                    <th onclick="sortTable('team')" style="cursor: pointer;">Team</th>
+                    <th onclick="sortTable('games_played')" style="cursor: pointer;">GP</th>
+                    <th onclick="sortTable('wins')" style="cursor: pointer;">W</th>
+                    <th onclick="sortTable('draws')" style="cursor: pointer;">D</th>
+                    <th onclick="sortTable('losses')" style="cursor: pointer;">L</th>
+                    <th onclick="sortTable('goals_for')" style="cursor: pointer;">GF</th>
+                    <th onclick="sortTable('goals_against')" style="cursor: pointer;">GA</th>
+                    <th onclick="sortTable('goal_difference')" style="cursor: pointer;">GD</th>
+                    <th onclick="sortTable('points')" style="cursor: pointer;">Pts</th>
+                </tr>
+            </thead>
+            <tbody id="standingsBody">
+                <!-- Results will be populated here -->
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="pagination" class="d-flex justify-content-center mt-4">
+        <!-- Pagination will be added here -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentData = [];
+    let currentPage = 1;
+    const itemsPerPage = 50;
+
+    // Load all standings on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAllStandings();
+    });
+
+    function loadAllStandings() {
+        showLoading();
+        fetch('/standings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    currentData = data;
+                    displayStandings(data, 'All Standings');
+                    updateStats(data);
+                }
+            })
+            .catch(error => {
+                showError('Error loading standings: ' + error.message);
+            });
+    }
+
+    
+    function displayStandings(data, title) {
+        hideLoading();
+        
+        if (!data || data.length === 0) {
+            showError('No standings found');
+            return;
+        }
+        
+        document.getElementById('standingsTitle').textContent = `${title} (${data.length} records)`;
+        
+        // Reset pagination
+        currentPage = 1;
+        displayPage(data, currentPage);
+        
+        document.getElementById('standingsContainer').style.display = 'block';
+        document.getElementById('standingsContainer').scrollIntoView({ behavior: 'smooth' });
+        showSuccess(`Loaded ${data.length} standings records`);
+    }
+
+    function displayPage(data, page) {
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = data.slice(startIndex, endIndex);
+        
+        const tbody = document.getElementById('standingsBody');
+        tbody.innerHTML = '';
+        
+        pageData.forEach(standing => {
+            const row = document.createElement('tr');
+            row.className = getPositionClass(standing.position);
+            
+            row.innerHTML = `
+                <td><strong>${standing.season}</strong></td>
+                <td><span class="badge bg-primary">${standing.position}</span></td>
+                <td><strong>${standing.team}</strong></td>
+                <td>${standing.games_played}</td>
+                <td class="text-success">${standing.wins}</td>
+                <td class="text-warning">${standing.draws}</td>
+                <td class="text-danger">${standing.losses}</td>
+                <td class="text-success"><strong>${standing.goals_for}</strong></td>
+                <td class="text-danger">${standing.goals_against}</td>
+                <td class="${standing.goal_difference > 0 ? 'text-success' : standing.goal_difference < 0 ? 'text-danger' : 'text-muted'}">
+                    ${standing.goal_difference > 0 ? '+' : ''}${standing.goal_difference}
+                </td>
+                <td><strong class="text-primary">${standing.points}</strong></td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        // Update pagination
+        updatePagination(data.length);
+    }
+
+    function updatePagination(totalItems) {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const pagination = document.getElementById('pagination');
+        
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        let paginationHTML = '<nav><ul class="pagination">';
+        
+        // Previous button
+        if (currentPage > 1) {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a></li>`;
+        }
+        
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === currentPage ? 'active' : '';
+            paginationHTML += `<li class="page-item ${active}"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
+        }
+        
+        // Next button
+        if (currentPage < totalPages) {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a></li>`;
+        }
+        
+        paginationHTML += '</ul></nav>';
+        pagination.innerHTML = paginationHTML;
+    }
+
+    function changePage(page) {
+        currentPage = page;
+        displayPage(currentData, page);
+    }
+
+    function updateStats(data) {
+        if (!data || data.length === 0) return;
+        
+        const seasons = [...new Set(data.map(s => s.season))];
+        const teams = [...new Set(data.map(s => s.team))];
+        const avgPoints = (data.reduce((sum, s) => sum + s.points, 0) / data.length).toFixed(1);
+        
+        document.getElementById('totalRecords').textContent = data.length.toLocaleString();
+        document.getElementById('totalSeasons').textContent = seasons.length;
+        document.getElementById('totalTeams').textContent = teams.length;
+        document.getElementById('avgPoints').textContent = avgPoints;
+        
+        document.getElementById('statsContainer').style.display = 'block';
+    }
+
+    function sortResults() {
+        const sortBy = document.getElementById('sortBy').value;
+        let sortedData = [...currentData];
+        
+        switch(sortBy) {
+            case 'season_position':
+                sortedData.sort((a, b) => a.season - b.season || a.position - b.position);
+                break;
+            case 'points_desc':
+                sortedData.sort((a, b) => b.points - a.points);
+                break;
+            case 'points_asc':
+                sortedData.sort((a, b) => a.points - b.points);
+                break;
+            case 'goals_for_desc':
+                sortedData.sort((a, b) => b.goals_for - a.goals_for);
+                break;
+            case 'goal_diff_desc':
+                sortedData.sort((a, b) => b.goal_difference - a.goal_difference);
+                break;
+        }
+        
+        currentData = sortedData;
+        currentPage = 1;
+        displayPage(currentData, currentPage);
+        updatePagination(currentData.length);
+    }
+
+    function exportToCSV() {
+        if (!currentData || currentData.length === 0) {
+            showError('No data to export');
+            return;
+        }
+        
+        const headers = ['Season', 'Position', 'Team', 'Games Played', 'Wins', 'Draws', 'Losses', 'Goals For', 'Goals Against', 'Goal Difference', 'Points'];
+        const csvContent = [
+            headers.join(','),
+            ...currentData.map(row => [
+                row.season,
+                row.position,
+                `"${row.team}"`,
+                row.games_played,
+                row.wins,
+                row.draws,
+                row.losses,
+                row.goals_for,
+                row.goals_against,
+                row.goal_difference,
+                row.points
+            ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `laliga_standings_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        showSuccess('Data exported successfully!');
+    }
+
+    // Enter key support for filters
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+</script>
+{% endblock %}

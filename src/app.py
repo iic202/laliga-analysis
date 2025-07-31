@@ -5,7 +5,7 @@ import os
 
 load_dotenv('config/db.env')
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../static', template_folder='../templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -29,6 +29,18 @@ class Standing(db.Model):
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/standings-page')
+def standings_page():
+    return render_template('standings.html')
+
+@app.route('/api-status')
+def api_status_page():
+    return render_template('api_status.html')
+
+@app.route('/statistics')
+def statistics_page():
+    return render_template('statistics.html')
 
 
 # Get all standings with optional filters

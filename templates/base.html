@@ -16,7 +16,7 @@
         }
         
         .hero-section {
-            background: linear-gradient(135deg, #000000 0%, #ff0000 100%);
+            background: linear-gradient(135deg, #ff9595 0%, #ffffff 100%);
             color: white;
             padding: 60px 0;
         }
@@ -118,23 +118,16 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Home</a>
+                        <a class="nav-link" href="/"> Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/standings">All Standings</a>
+                        <a class="nav-link" href="/standings-page">All Standings</a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            Quick Access
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/standings/2023">2023 Season</a></li>
-                            <li><a class="dropdown-item" href="/standings/2022">2022 Season</a></li>
-                            <li><a class="dropdown-item" href="/standings/2021">2021 Season</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/team?name=Real Madrid">Real Madrid</a></li>
-                            <li><a class="dropdown-item" href="/team?name=Barcelona">Barcelona</a></li>
-                        </ul>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/statistics">Statistics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api-status">API Status</a>
                     </li>
                 </ul>
             </div>
@@ -149,20 +142,6 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>La Liga Analysis</h5>
-                    <p>Comprehensive analysis of Spanish football league standings and team performances.</p>
-                </div>
-                <div class="col-md-6">
-                    <h5>Quick Links</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="/standings" class="text-light">All Standings</a></li>
-                        <li><a href="/api/test-db" class="text-light">API Status</a></li>
-                        <li><a href="/api/tables" class="text-light">Database Info</a></li>
-                    </ul>
-                </div>
-            </div>
             <hr class="my-4">
             <div class="text-center">
                 <p>&copy; 2025 La Liga Analysis. Built with Flask & Bootstrap.</p>
