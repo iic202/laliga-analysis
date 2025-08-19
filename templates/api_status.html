@@ -89,7 +89,7 @@
 <div class="container mt-5">
     <div class="card">
         <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">📈 System Metrics</h5>
+            <h5 class="mb-0">System Metrics</h5>
         </div>
         <div class="card-body">
             <div class="row">
@@ -137,7 +137,6 @@
     let successfulCalls = 0;
     let totalResponseTime = 0;
 
-    // Load status on page load
     document.addEventListener('DOMContentLoaded', function() {
         checkDatabase();
         loadEndpointsList();
@@ -351,7 +350,6 @@
         document.getElementById('successRate').textContent = successRate + '%';
         document.getElementById('avgResponseTime').textContent = avgTime + 'ms';
         
-        // Update success rate badge color
         const successRateElement = document.getElementById('successRate');
         successRateElement.className = `badge fs-6 ${parseFloat(successRate) >= 90 ? 'bg-success' : parseFloat(successRate) >= 70 ? 'bg-warning' : 'bg-danger'}`;
     }
