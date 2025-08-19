@@ -55,13 +55,6 @@ Requires a `standings` table with columns:
 **Database:** PostgreSQL  
 **Frontend:** Bootstrap 5 + Chart.js
 
-Wiht the repo cloned and the data inserted into the databse. You can run de app with:
-```bash
-cd src && python app.py
-```
-
-Open: `http://localhost:5000`
-
 ## Tech Stack
 
 Flask • PostgreSQL • Bootstrap • Chart.js
